@@ -137,6 +137,9 @@ bool cgelf_read(struct cgelf * cgelf, char * sopath) {
                         case DT_JMPREL:
                             cgelf->dynamic.jmprel = d_val;
                             break;
+                        case DT_PLTREL:
+                            cgelf->dynamic.pltrel = d_val;
+                            break;
                         case DT_PLTRELSZ:
                             cgelf->dynamic.pltrelsz = d_val;
                             break;
@@ -146,11 +149,17 @@ bool cgelf_read(struct cgelf * cgelf, char * sopath) {
                         case DT_RELASZ:
                             cgelf->dynamic.relasz = d_val;
                             break;
+                        case DT_RELAENT:
+                            cgelf->dynamic.relaent = d_val;
+                            break;
                         case DT_REL:
                             cgelf->dynamic.rel = d_val;
                             break;
                         case DT_RELSZ:
                             cgelf->dynamic.relsz = d_val;
+                            break;
+                        case DT_RELENT:
+                            cgelf->dynamic.relent = d_val;
                             break;
                         case DT_INIT:
                             cgelf->dynamic.init = d_val;

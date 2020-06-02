@@ -115,17 +115,33 @@ bool ivh_load(struct ivoryHandle *handle, const struct cgelf *cgelf) {
     return true;
 }
 
-void ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel_start, uintptr_t rel_count) {
-    void * rel_ptr = (void *) rel_start;
+bool ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel_start, uintptr_t rel_count, int8_t rel_entsz) {
+    //printf("%x, %d, %d\n", rel_start, rel_count, rel_entsz);
+    //void * rel_ptr = (void *) rel_start;
     for(int i=0; i<rel_count; i++) {
-        void *p = rel_ptr + i*8;
-        uint64_t offset = *(uint32_t *)p; p += 4;
-        uint64_t info = *(uint32_t *)p;
-        uint64_t type = ELF32_R_TYPE(info);
-        uint64_t sym = ELF32_R_SYM(info);
+        size_t *p = (size_t *) (handle->load_bias + rel_start + i * rel_entsz);
+        //fprintf(stderr, "[%p][%d]\n", p, cgelf->dynamic.pltrel);
+        size_t offset = *p; p++;
+        size_t info = *p;
+        size_t type = ELFW(R_TYPE)(info);
+        size_t sym  = ELFW(R_SYM)(info);
+        char sym_name[IVORY_MAX_SYMBOL_NAME_SIZE];
+        memset(sym_name, 0, IVORY_MAX_SYMBOL_NAME_SIZE);
+        if (sym != 0) {
+            strncpy(sym_name, cgelf->dynsym.ents[sym].name, IVORY_MAX_SYMBOL_NAME_SIZE);
+        }
 
-        uint64_t reloc = offset + handle->load_bias;
-        uint64_t addend = reloc;
+        size_t addend = 0;
+        size_t reloc = handle->load_bias + offset;
+        if (cgelf->dynamic.pltrel == DT_REL) { // rel
+            addend = *(size_t *)reloc;
+        } else if (cgelf->dynamic.pltrel == DT_RELA) { //rela
+            p++;
+            addend = *p;
+        } else {
+            return false;
+        }
+
         //fprintf(stderr, "0rel offset: 0x%x, info: 0x%x, type: 0x%x, sym: %d, reloc: 0x%x, reloc-value: 0x%x, load_bias: 0x%llx\n", offset, info, type, sym, reloc, *(uint32_t *)reloc, d->load_bias);
         switch(type) {
             case R_ARM_GLOB_DAT:
@@ -135,9 +151,6 @@ void ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel
                 *(uintptr_t *)reloc = *(uintptr_t *) reloc + handle->load_bias;
                 break;
             case R_ARM_JUMP_SLOT:
-                ;char sym_name[IVORY_MAX_SYMBOL_NAME_SIZE];
-                struct cgelfSymbolTable * st = &cgelf->dynsym;
-                strncpy(sym_name, st->ents[sym].name, IVORY_MAX_SYMBOL_NAME_SIZE);
                 if (0 == strcmp("printf", sym_name)) {
                     *(uintptr_t *)reloc = (uintptr_t) printf;
                 //} else if (0 == strcmp("__cxa_finalize", sym_name)) {
@@ -213,25 +226,29 @@ void ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel
         }
         //fprintf(stderr, "1rel offset: 0x%x, info: 0x%x, type: 0x%x, sym: %d, reloc: 0x%x, reloc-value: 0x%x, load_bias: 0x%llx\n" , offset, info, type, sym, reloc, *(uint32_t *)reloc, d->load_bias);
     }
+    return true;
 }
 
 bool ivh_link(struct ivoryHandle *handle, struct cgelf *cgelf) {
+    int32_t relentsz = 0;
     if (cgelf->dynamic.rel != 0) {
         //printf("have rel.dyn.\n");
-        int32_t rel_count = cgelf->dynamic.relsz / 8; //sizeof(Elf32_Rel);
-        ivh_relocate(handle, cgelf, cgelf->dynamic.rel, rel_count);
+        relentsz = cgelf->dynamic.relent;
+        int32_t rel_count = cgelf->dynamic.relsz / relentsz;
+        ivh_relocate(handle, cgelf, cgelf->dynamic.rel, rel_count, relentsz);
     } else if (cgelf->dynamic.rela != 0) {
-        //printf("have rel.dyn.\n");
-        int32_t rela_count = cgelf->dynamic.relasz / 8; //sizeof(Elf32_Rel);
-        ivh_relocate(handle, cgelf, cgelf->dynamic.rela, rela_count);
+        //printf("have rela.dyn.\n");
+        relentsz = cgelf->dynamic.relaent;
+        int32_t rela_count = cgelf->dynamic.relasz / relentsz;
+        ivh_relocate(handle, cgelf, cgelf->dynamic.rela, rela_count, relentsz);
     } else {
         return false;
     }
 
     if (cgelf->dynamic.jmprel != 0) {
         //printf("have rel.plt.\n");
-        int32_t jmprel_count = cgelf->dynamic.pltrelsz / 8; //sizeof(Elf32_Rel);
-        ivh_relocate(handle, cgelf, cgelf->dynamic.jmprel, jmprel_count);
+        int32_t jmprel_count = cgelf->dynamic.pltrelsz / relentsz;
+        ivh_relocate(handle, cgelf, cgelf->dynamic.jmprel, jmprel_count, relentsz);
     }
 
     struct cgelfSymbolTable * st = &cgelf->dynsym;

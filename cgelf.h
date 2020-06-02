@@ -65,18 +65,6 @@
  */
 #define ELFn_ST_INFO(b, t)          (((b)<<4)+((t)&0xf))
 
-#define ELF32_R_SYM(info)             ((info)>>8)
-#define ELF32_R_TYPE(info)            ((unsigned char)(info))
-#define ELF32_R_INFO(sym, type)       (((sym)<<8)+(unsigned char)(type))
-// #
-// #define ELF64_R_SYM(info)             ((info)>>32)
-// #define ELF64_R_TYPE(info)            ((uint32_t)(info))
-// #define ELF64_R_INFO(sym, type)       (((uint64_t)(sym)<<32)+(uint64_t)(type))
-// #
-// #define ELF64_R_TYPE_DATA(info)       (((uint64_t)(info)<<32)>>40)
-// #define ELF64_R_TYPE_ID(info)         (((uint64_t)(info)<<56)>>56)
-// #define ELF64_R_TYPE_INFO(data, type) (((uint64_t)(data)<<8)+(uint64_t)(type))
-
 #define SHT_SYMTAB          2
 #define SHT_DYNAMIC         6
 #define SHT_DYNSYM          11
@@ -133,37 +121,37 @@
 #define DT_VERNEEDNUM   0x6fffffff
 
 struct cgelfDynamic {
-    uint64_t strtab;
-    uint64_t strsz;
-    uint64_t symtab;
-    uint64_t pltrel;
-    uint64_t pltrelsz;
-    uint64_t jmprel;
-    uint64_t pltgot; // ignore always
-    uint64_t rela;
-    uint64_t relasz;
-    uint64_t relaent;
-    uint64_t rel;
-    uint64_t relsz;
-    uint64_t relent;
-    uint64_t init;
-    uint64_t fini;
-    uint64_t init_array;
-    uint64_t init_arraysz;
-    uint64_t fini_array;
-    uint64_t fini_arraysz;
-    uint64_t preinit_array;
-    uint64_t preinit_arraysz;
-    uint64_t textrel;
-    uint64_t symbolic;
-    uint64_t needed;
-    uint64_t flags;
-    uint64_t versym;
-    uint64_t verdef;
-    uint64_t verdefnum;
-    uint64_t verneed;
-    uint64_t verneednum;
-    uint64_t runpath;
+    size_t strtab;
+    size_t strsz;
+    size_t symtab;
+    size_t pltrel;
+    size_t pltrelsz;
+    size_t jmprel;
+    size_t pltgot; // ignore always
+    size_t rela;
+    size_t relasz;
+    size_t relaent;
+    size_t rel;
+    size_t relsz;
+    size_t relent;
+    size_t init;
+    size_t fini;
+    size_t init_array;
+    size_t init_arraysz;
+    size_t fini_array;
+    size_t fini_arraysz;
+    size_t preinit_array;
+    size_t preinit_arraysz;
+    size_t textrel;
+    size_t symbolic;
+    size_t needed;
+    size_t flags;
+    size_t versym;
+    size_t verdef;
+    size_t verdefnum;
+    size_t verneed;
+    size_t verneednum;
+    size_t runpath;
 };
 
 struct cgelfRelocEntry {

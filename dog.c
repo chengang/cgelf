@@ -2,7 +2,7 @@
 #include <string.h>
 
 void myprint(void) {
-    printf("123\n");
+    printf("hello, world\n");
 }
 
 int myadd(int a) {
