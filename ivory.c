@@ -76,8 +76,12 @@ bool ivh_load(struct ivoryHandle *handle, const struct cgelf *cgelf) {
             fprintf(stderr, "mprotect failed\n");
             return false;
         }
-        //fprintf(stderr, "memcpy: %p, %p, %x, end: %p\n", (void *)seg_page_start, elf_content + file_start, file_length, (void*) seg_page_start + file_length);
-        if ( NULL == memcpy((void *)seg_page_start, elf_content + file_start, file_length)) {
+        //fprintf(stderr, "file_start[%x]\n", file_start);
+        //fprintf(stderr, "file_page_start[%x]\n", file_page_start);
+        //fprintf(stderr, "file_length[%x]\n", file_length);
+        //fprintf(stderr, "seg_page_start[%x]\n", seg_page_start);
+        //fprintf(stderr, "memcpy: %p, %p, %d, end: %p\n", (void *)seg_page_start, elf_content + file_start, file_length, (void*) seg_page_start + file_length);
+        if ( NULL == memcpy((void *)seg_page_start, elf_content + file_page_start, file_length)) {
             fprintf(stderr, "memcpy failed\n");
             return false;
         }
@@ -125,9 +129,11 @@ bool ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel
         size_t info = *p;
         size_t type = ELFW(R_TYPE)(info);
         size_t sym  = ELFW(R_SYM)(info);
-        char sym_name[IVORY_MAX_SYMBOL_NAME_SIZE];
+        size_t sym_addr = 0;
+        char   sym_name[IVORY_MAX_SYMBOL_NAME_SIZE];
         memset(sym_name, 0, IVORY_MAX_SYMBOL_NAME_SIZE);
         if (sym != 0) {
+            sym_addr = handle->load_bias + cgelf->dynsym.ents[sym].st_value;
             strncpy(sym_name, cgelf->dynsym.ents[sym].name, IVORY_MAX_SYMBOL_NAME_SIZE);
         }
 
@@ -141,10 +147,21 @@ bool ivh_relocate(struct ivoryHandle *handle, struct cgelf *cgelf, uintptr_t rel
         } else {
             return false;
         }
+        //fprintf(stderr, "[%d][%p][%s][%d]\n", sym, sym_addr, sym_name, addend);
 
         //fprintf(stderr, "0rel offset: 0x%x, info: 0x%x, type: 0x%x, sym: %d, reloc: 0x%x, reloc-value: 0x%x, load_bias: 0x%llx\n", offset, info, type, sym, reloc, *(uint32_t *)reloc, d->load_bias);
         switch(type) {
             case R_ARM_GLOB_DAT:
+                //fprintf(stderr, "[%s]\n", sym_name);
+                if (0 == strcmp("stdout", sym_name)) {
+                    *(uintptr_t *)reloc = (uintptr_t) &stdout;
+                } else if (0 == strcmp("stderr", sym_name)) {
+                    *(uintptr_t *)reloc = (uintptr_t) &stderr;
+                } else if (0 == strcmp("stdin", sym_name)) {
+                    *(uintptr_t *)reloc = (uintptr_t) &stdin;
+                } else {
+                    *(uintptr_t *)reloc = (uintptr_t) sym_addr + addend;
+                }
                 //*(uintptr_t *)reloc = &__sF;
                 break;
             case R_ARM_RELATIVE:
